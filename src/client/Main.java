@@ -6,13 +6,17 @@ import java.io.InputStreamReader;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.ResultSet;
+import java.sql.SQLIntegrityConstraintViolationException;
+
+import Entities.Farmer;
+import Entities.Market;
 import connection.DBConnection;
 
 
 
 public class Main {
-    static final String USER = "root";
-    static final String PASS = "19981998Bg";
+    private static final String USER = "root";
+    private static final String PASS = "19981998Bg";
 	public static void instantiateJDBC() throws SQLException {
 
 		try {
@@ -65,13 +69,19 @@ public class Main {
 		}
 		
 		String first_part = subCommands[0];
+        String second_part =subCommands[1];
 		// Handle any possible space between ADD|REGISTER FARMER (...)
-		String second_part = subCommands.length!=2? subCommands[1]+subCommands[2]:
-			subCommands[1];
-
+        if(subCommands.length>2) {
+            for (int ii = 2; ii < subCommands.length; ii++) {
+                second_part+=" "+subCommands[ii];
+            }
+	    }
+        System.out.println(second_part);
 		if (first_part.equalsIgnoreCase("show")){
 			if(second_part.equalsIgnoreCase("tables")) {
 				connection.getDatabaseMetaData();
+                usage();
+
 			} else {
 				System.err.println("Wrong command!");
 				usage();
@@ -79,7 +89,7 @@ public class Main {
 			
 		} else if (first_part.equalsIgnoreCase("load")){
 			if(second_part.equalsIgnoreCase("data")) {
-				// TODO load data
+
 			} else {
 				System.err.println("Wrong command!");
 				usage();
@@ -92,23 +102,65 @@ public class Main {
 		} else if (first_part.equalsIgnoreCase("add")){
 			if(second_part.startsWith("FARMERS") || second_part.startsWith("farmers")) {
 				// TODO add farmers (DO transaction, end with either commit or abort)
-				String data = get_data_from_commands(second_part);
+
 				// parse data and insert rows
 			} else if(second_part.startsWith("FARMER") || second_part.startsWith("farmer")) {
-				// TODO add farmer
-			} else if(second_part.startsWith("PRODUCTS") || second_part.startsWith("products")) {
+				String data = get_data_from_commands(second_part);
+				String[] values = data.split(",");
+				Farmer farmer = new Farmer(values);
+
+				try {
+
+
+				connection.insertData("ziptocity",farmer.getZiptocity());
+                connection.insertData("addrtozip",farmer.getAddrtozip());
+                connection.insertData("farmer",farmer.getFarmerTable());
+                connection.insertData("phone",farmer.getPhoneTable());
+                connection.insertData("email",farmer.getEmailTable());
+                connection.commitTransaction();
+				}catch (SQLException e){
+				    connection.abort();
+                    System.err.println("Values cannot be inserted");
+                    //main_loop(connection);
+                }finally {
+				    usage();
+                }
+
+
+
+
+            } else if(second_part.startsWith("PRODUCTS") || second_part.startsWith("products")) {
 				// TODO add products (DO transaction, end with either commit or abort)
 			} else if(second_part.startsWith("PRODUCT") || second_part.startsWith("product")) {
 				// TODO add product
 			} else if(second_part.startsWith("MARKETS") || second_part.startsWith("markets")) {
 				// TODO add markets (DO transaction, end with either commit or abort)
 			} else if(second_part.startsWith("MARKET") || second_part.startsWith("market")) {
-				// TODO add market
+				String data = get_data_from_commands(second_part);
+				String[] values = data.split(",");
+				Market market=new Market(values);
+				try {
+				    connection.insertData("ziptocity",market.getZiptocity());
+                    connection.insertData("addrtozip",market.getAddresstozip());
+                    connection.insertData("market",market.getMarketTable());
+
+                    connection.commitTransaction();
+
+
+
+				}catch (SQLException e){
+                    connection.abort();
+                    System.err.println("Values cannot be inserted");
+                   // main_loop(connection);
+				}finally {
+
+				    usage();
+                }
 			} else {
 				System.err.println("Wrong command!");
 				usage();
 			}
-			
+
 		} else if (first_part.equalsIgnoreCase("register")){
 			if(second_part.startsWith("PRODUCTs") || second_part.startsWith("products")) {
 				// TODO register products (DO transaction, end with either commit or abort)
@@ -131,10 +183,9 @@ public class Main {
 	}
 	
 	public static void main_loop(DBConnection database_connection) throws SQLException {
-		
-		System.out.println("Command line interface is initiated");
-		usage();
-		
+
+
+        usage();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		String buffer = null;
 		try {
@@ -171,7 +222,8 @@ public class Main {
 		
 		try {
 			database_connection = new DBConnection(url,USER,PASS);
-			
+            System.out.println("Command line interface is initiated");
+
 			main_loop(database_connection);
 			
 		} catch (SQLException e) {
