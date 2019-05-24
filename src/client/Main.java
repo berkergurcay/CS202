@@ -3,20 +3,15 @@ package client;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.ResultSet;
-import java.sql.SQLIntegrityConstraintViolationException;
 
-import Entities.Farmer;
-import Entities.Market;
+import java.sql.SQLException;
+
 import connection.DBConnection;
 
 
 
 public class Main {
-    private static final String USER = "root";
-    private static final String PASS = "19981998Bg";
+
 	public static void instantiateJDBC() throws SQLException {
 
 		try {
@@ -76,11 +71,11 @@ public class Main {
                 second_part+=" "+subCommands[ii];
             }
 	    }
-        System.out.println(second_part);
+
 		if (first_part.equalsIgnoreCase("show")){
 			if(second_part.equalsIgnoreCase("tables")) {
 				connection.getDatabaseMetaData();
-                usage();
+
 
 			} else {
 				System.err.println("Wrong command!");
@@ -89,6 +84,24 @@ public class Main {
 			
 		} else if (first_part.equalsIgnoreCase("load")){
 			if(second_part.equalsIgnoreCase("data")) {
+				boolean farmerCommit = connection.csvAdder("farmers.csv");
+				boolean marketCommit = connection.csvAdder("markets.csv");
+                boolean productCommit = connection.csvAdder("products.csv");
+				boolean registerCommit = connection.csvAdder("registers.csv");
+				boolean buysCommit = connection.csvAdder("buys.csv");
+				boolean producesCommit = connection.csvAdder("produces.csv");
+
+                if(farmerCommit && marketCommit && productCommit && buysCommit && registerCommit && producesCommit ) {
+                    connection.commitTransaction();
+                    System.out.println("Values are successfully loaded");
+
+                }else{
+                    System.err.println("Values cannot be inserted");
+                    connection.abort();
+                }
+
+
+
 
 			} else {
 				System.err.println("Wrong command!");
@@ -101,61 +114,86 @@ public class Main {
 			
 		} else if (first_part.equalsIgnoreCase("add")){
 			if(second_part.startsWith("FARMERS") || second_part.startsWith("farmers")) {
-				// TODO add farmers (DO transaction, end with either commit or abort)
-
-				// parse data and insert rows
-			} else if(second_part.startsWith("FARMER") || second_part.startsWith("farmer")) {
-				String data = get_data_from_commands(second_part);
-				String[] values = data.split(",");
-				Farmer farmer = new Farmer(values);
-
-				try {
-
-
-				connection.insertData("ziptocity",farmer.getZiptocity());
-                connection.insertData("addrtozip",farmer.getAddrtozip());
-                connection.insertData("farmer",farmer.getFarmerTable());
-                connection.insertData("phone",farmer.getPhoneTable());
-                connection.insertData("email",farmer.getEmailTable());
-                connection.commitTransaction();
-				}catch (SQLException e){
-				    connection.abort();
-                    System.err.println("Values cannot be inserted");
-                    //main_loop(connection);
-                }finally {
-				    usage();
-                }
-
-
-
-
-            } else if(second_part.startsWith("PRODUCTS") || second_part.startsWith("products")) {
-				// TODO add products (DO transaction, end with either commit or abort)
-			} else if(second_part.startsWith("PRODUCT") || second_part.startsWith("product")) {
-				// TODO add product
-			} else if(second_part.startsWith("MARKETS") || second_part.startsWith("markets")) {
-				// TODO add markets (DO transaction, end with either commit or abort)
-			} else if(second_part.startsWith("MARKET") || second_part.startsWith("market")) {
-				String data = get_data_from_commands(second_part);
-				String[] values = data.split(",");
-				Market market=new Market(values);
-				try {
-				    connection.insertData("ziptocity",market.getZiptocity());
-                    connection.insertData("addrtozip",market.getAddresstozip());
-                    connection.insertData("market",market.getMarketTable());
-
+				String[] farmers = second_part.split(":");
+				boolean isCommitable=false;
+				for (String farmer : farmers) {
+				    String dataOfOneFarmer = get_data_from_commands(farmer);
+				    isCommitable= connection.insertFarmer(dataOfOneFarmer);
+				    if(!isCommitable){
+				        connection.abort();
+				        System.err.println("Farmers cannot be inserted");
+				        break;
+				    }
+				}
+				if (isCommitable) {
                     connection.commitTransaction();
-
-
-
-				}catch (SQLException e){
-                    connection.abort();
-                    System.err.println("Values cannot be inserted");
-                   // main_loop(connection);
-				}finally {
-
-				    usage();
+                    System.out.println("Farmers are successfully inserted");
                 }
+			} else if(second_part.startsWith("FARMER") || second_part.startsWith("farmer")) {
+
+					String dataOfFarmer = get_data_from_commands(second_part);
+					boolean isCommitable = connection.insertFarmer(dataOfFarmer);
+					if(isCommitable) {
+                        connection.commitTransaction();
+                        System.out.println("Farmer is successfully inserted");
+                    }else{
+					    connection.abort();
+                        System.err.println("Farmer cannot be inserted");
+					}
+
+			} else if(second_part.startsWith("PRODUCTS") || second_part.startsWith("products")) {
+				String[] products = second_part.split(":");
+				boolean isCommitable=false;
+                for (String product:products) {
+                    String dataOfOneProduct = get_data_from_commands(product);
+                    isCommitable=connection.insertProduct(dataOfOneProduct);
+                    if(!isCommitable){
+                        connection.abort();
+                        System.err.println("Products cannot be inserted");
+                        break;
+                    }
+                }
+                if(isCommitable) {
+                    connection.commitTransaction();
+                    System.out.println("Products are successfully inserted");
+                }
+			} else if(second_part.startsWith("PRODUCT") || second_part.startsWith("product")) {
+				String dataOfProduct = get_data_from_commands(second_part);
+				boolean isCommitable=connection.insertProduct(dataOfProduct);
+				if(isCommitable) {
+                    connection.commitTransaction();
+                    System.out.println("Product is inserted successfully ");
+                }else {
+                    connection.abort();
+                    System.err.println("Product cannot be inserted");
+                }
+			} else if(second_part.startsWith("MARKETS") || second_part.startsWith("markets")) {
+				String[] markets =second_part.split(":");
+                boolean isCommitable=false;
+				for (String market:markets) {
+                    String dataOfOneMarket=get_data_from_commands(market);
+				    isCommitable=connection.insertMarket(dataOfOneMarket);
+                    if(!isCommitable){
+                        connection.abort();
+                        System.err.println("Markets cannot be inserted");
+                        break;
+                    }
+				}
+                if(isCommitable){
+                    connection.commitTransaction();
+                    System.out.println("Markets are inserted successfully");
+                }
+			} else if(second_part.startsWith("MARKET") || second_part.startsWith("market")) {
+				String dataOfMarket=get_data_from_commands(second_part);
+				boolean isCommitable=connection.insertMarket(dataOfMarket);
+			    if(isCommitable) {
+                    connection.commitTransaction();
+                    System.out.println("Market ");
+                }else{
+				    connection.abort();
+                    System.err.println("Market cannot be inserted");
+				}
+
 			} else {
 				System.err.println("Wrong command!");
 				usage();
@@ -163,9 +201,32 @@ public class Main {
 
 		} else if (first_part.equalsIgnoreCase("register")){
 			if(second_part.startsWith("PRODUCTs") || second_part.startsWith("products")) {
-				// TODO register products (DO transaction, end with either commit or abort)
+				String[] registers= second_part.split(":");
+				boolean isCommitable=false;
+				for(String register:registers){
+				    String dataOfOneRegister=get_data_from_commands(register);
+				    isCommitable=connection.insertRegister(get_data_from_commands(dataOfOneRegister));
+				    if(!isCommitable){
+				        connection.abort();
+				        System.err.println("Products cannot be registered");
+				        break;
+                    }
+				}
+                if (isCommitable) {
+                    connection.commitTransaction();
+                    System.out.println("Products are registered successfully");
+                }
 			} else if(second_part.startsWith("PRODUCT") || second_part.startsWith("product")) {
-				// TODO register product 
+				String dataOfRegister = get_data_from_commands(second_part);
+			    boolean isCommitable=connection.insertRegister(dataOfRegister);
+                if(isCommitable) {
+                    connection.commitTransaction();
+                    System.out.println("Product is registered successfully");
+                }else{
+					connection.abort();
+					System.err.println("Product cannot be registered");
+				}
+
 			} else {
 				System.err.println("Wrong command!");
 				usage();
@@ -185,12 +246,13 @@ public class Main {
 	public static void main_loop(DBConnection database_connection) throws SQLException {
 
 
-        usage();
+
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		String buffer = null;
+		String buffer;
 		try {
 			while(true) {
-				buffer = reader.readLine();
+                usage();
+			    buffer = reader.readLine();
 				if(buffer.equalsIgnoreCase("exit") || buffer.equalsIgnoreCase("quit")){
 					// we are done 
 					System.out.println("Command line interface is closed.");
@@ -217,11 +279,11 @@ public class Main {
 			System.err.println("Usage: Main hostname database username password");
 		}
 		
-		String url = "jdbc:mysql://localhost:3306/homework2?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC";
+		String url = "jdbc:mysql://"+args[0]+"/"+args[1]+"?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC";
 
 		
 		try {
-			database_connection = new DBConnection(url,USER,PASS);
+			database_connection = new DBConnection(url,args[2],args[3]);
             System.out.println("Command line interface is initiated");
 
 			main_loop(database_connection);

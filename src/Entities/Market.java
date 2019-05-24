@@ -1,15 +1,15 @@
 package Entities;
 
-public class Market {
+public class Market extends Entity {
     private String mname,address,zip,city,phone,budget;
 
     public Market(String[] values){
-        this.mname=values[0];
-        this.address=values[1];
-        this.zip = values[2];
-        this.city = values[3];
-        this.phone = values[4];
-        this.budget = values[5];
+        this.mname=values[0].trim();
+        this.address=values[1].trim();
+        this.zip = values[2].trim();
+        this.city = values[3].trim();
+        this.phone = values[4].trim();
+        this.budget = values[5].trim();
     }
 
     public String getMarketTable() {
@@ -21,4 +21,6 @@ public class Market {
     public String getAddresstozip(){
         return "('"+address+"','"+zip+"')";
     }
+
+
 }
